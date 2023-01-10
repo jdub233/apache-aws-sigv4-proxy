@@ -8,6 +8,9 @@ COPY custom-apache-site.conf /etc/apache2/sites-available/custom-apache-site.con
 
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
     a2enmod rewrite && \
+    a2enmod ssl && \
+    a2enmod proxy && \
+    a2enmod proxy_http && \
     a2dissite 000-default && \
     a2ensite custom-apache-site && \
     service apache2 restart
