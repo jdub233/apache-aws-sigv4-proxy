@@ -35,6 +35,10 @@ function sign {
     local hexKey="$1"
     local msg="$2"
 
+    # Hack for debian which appears to add a prefix of '(stdin)= ' to the output.
+    # This just removes that prefix.
+    hexKey="${hexKey#(stdin)= }"
+
     echo -ne "${msg}" | openssl dgst -sha256 -mac hmac -macopt "hexkey:${hexKey}"
 }
 
@@ -49,6 +53,9 @@ function getSignatureKey {
     kRegion="$(sign "${kDate}" "${regionName}")"
     kService="$(sign "${kRegion}" "${serviceName}")"
     kSigning="$(sign "${kService}" "aws4_request")"
+
+    # Hack for debian which appears to add a prefix of '(stdin)= ' to the output
+    kSigning="${kSigning#(stdin)= }"
 
     echo -ne "${kSigning}"
 }
@@ -84,7 +91,7 @@ signature="$(sign "${signingKey}" "${stringToSign}")"
 
 # --- TASK 4: add signing information to the request ---
 
-authorizationHeader="${algorithm} Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}"
+authorizationHeader="${algorithm} Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature#(stdin)= }"
 
 # --- SEND REQUEST ---
 
