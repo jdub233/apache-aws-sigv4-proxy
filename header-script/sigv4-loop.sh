@@ -60,7 +60,7 @@ function getSignatureKey {
     echo -ne "${kSigning}"
 }
 
-while read
+while read inputUri
 do
 
 # --- TASK 1: create canonical request ---
@@ -68,7 +68,7 @@ do
 amazonDate="$(date -u +'%Y%m%dT%H%M%SZ')"
 dateStamp="$(date -u +'%Y%m%d')"
 
-canonicalUri="/"
+canonicalUri=${inputUri}
 canonicalQueryString=""
 canonicalHeaders="content-type:${contentType}\nhost:${host}\nx-amz-date:${amazonDate}\nx-amz-target:${amazonTarget}\n"
 signedHeaders="content-type;host;x-amz-date;x-amz-target"
