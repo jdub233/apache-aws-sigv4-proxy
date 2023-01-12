@@ -1,10 +1,15 @@
 # https://www.howtogeek.com/devops/how-to-use-docker-to-containerise-php-and-apache/
 FROM php:8.0.9-apache
 
+# For signature crypto
+RUN apt-get update
+RUN apt-get install -y bsdmainutils
+
 COPY ./public-html/ /var/www/html/
 
 RUN mkdir /opt/apache
 COPY ./header-script/debug.sh /opt/apache/debug.sh
+COPY ./header-script/sigv4-loop.sh /opt/apache/sigv4-loop.sh
 
 COPY custom-apache-site.conf /etc/apache2/sites-available/custom-apache-site.conf
 
