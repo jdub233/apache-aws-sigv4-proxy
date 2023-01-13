@@ -81,7 +81,11 @@ canonicalRequest="${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonic
 algorithm="AWS4-HMAC-SHA256"
 credentialScope="${dateStamp}/${region}/${service}/aws4_request"
 
-stringToSign="${algorithm}\n${amazonDate}\n${credentialScope}\n$(sha256 "${canonicalRequest}")"
+hashedCanonicalRequest="$(sha256 "${canonicalRequest}")"
+# Hack for debian which appears to add a prefix of '(stdin)= ' to the output
+hashedCanonicalRequest="${hashedCanonicalRequest#(stdin)= }"
+
+stringToSign="${algorithm}\n${amazonDate}\n${credentialScope}\n${hashedCanonicalRequest}"
 
 # --- TASK 3: calculate the signature ---
 
