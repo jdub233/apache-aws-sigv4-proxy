@@ -7,6 +7,7 @@ AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 [[ -n "${AWS_ACCESS_KEY_ID}" ]]     || { echo "AWS_ACCESS_KEY_ID required" >&2; exit 1; }
 [[ -n "${AWS_SECRET_ACCESS_KEY}" ]] || { echo "AWS_SECRET_ACCESS_KEY required" >&2; exit 1; }
+[[ -n "${OBJECT_LAMBDA_HOST}" ]]    || { echo "OBJECT_LAMBDA_HOST required" >&2; exit 1; }
 
 
 readonly method="GET"
