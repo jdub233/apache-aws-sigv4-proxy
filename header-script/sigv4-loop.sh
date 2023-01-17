@@ -8,20 +8,12 @@ AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 [[ -n "${AWS_ACCESS_KEY_ID}" ]]     || { echo "AWS_ACCESS_KEY_ID required" >&2; exit 1; }
 [[ -n "${AWS_SECRET_ACCESS_KEY}" ]] || { echo "AWS_SECRET_ACCESS_KEY required" >&2; exit 1; }
 
-readonly parameterName="SlawekTestParam"
 
-readonly method="POST"
-readonly service="ssm"
-readonly host="ssm.us-west-2.amazonaws.com"
-readonly region="us-west-2"
-readonly endpoint="https://${host}/"
-readonly contentType="application/x-amz-json-1.1"
-readonly amazonTarget="AmazonSSM.GetParameter"
-readonly requestParameters="$(printf '{"Name":"%s","WithDecryption":true}' "${parameterName}")"
-#readonly amazonDate="$(date -u +'%Y%m%dT%H%M%SZ')"
-#readonly dateStamp="$(date -u +'%Y%m%d')"
-# readonly amazonDate="20200429T093445Z"
-# readonly dateStamp="20200429"
+readonly method="GET"
+readonly service="s3-object-lambda"
+readonly host="${OBJECT_LAMBDA_HOST}"
+readonly region="us-east-1"
+readonly emptyContentSha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" # This is the SHA256 of an empty string.
 
 function sha256 {
     echo -ne "$1" | openssl dgst -sha256 -hex
@@ -60,19 +52,21 @@ function getSignatureKey {
     echo -ne "${kSigning}"
 }
 
+# After declaring the functions and the static values, we can start the read loop
+# Apache will pass the Request-URI to stdin of the script, and it will respond with the corresponding authorization header
 while read inputUri
 do
 
 # --- TASK 1: create canonical request ---
 
-amazonDate="$(date -u +'%Y%m%dT%H%M%SZ')"
+amazonDate="$(date -u +'%Y%m%dT%H%M%SZ')" # This has to match the x-amz-date header that apache generates
 dateStamp="$(date -u +'%Y%m%d')"
 
 canonicalUri=${inputUri}
 canonicalQueryString=""
-canonicalHeaders="content-type:${contentType}\nhost:${host}\nx-amz-date:${amazonDate}\nx-amz-target:${amazonTarget}\n"
-signedHeaders="content-type;host;x-amz-date;x-amz-target"
-payloadHash="$(sha256 "${requestParameters}")"
+canonicalHeaders="host:${host}\nx-amz-content-sha256:${emptyContentSha256}\nx-amz-date:${amazonDate}\nx-amz-security-token:${AWS_SECURITY_TOKEN}\n" # \n Last newline is needed???
+signedHeaders="host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
+payloadHash=${emptyContentSha256}
 
 canonicalRequest="${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}"
 
@@ -92,6 +86,8 @@ stringToSign="${algorithm}\n${amazonDate}\n${credentialScope}\n${hashedCanonical
 signingKey="$(getSignatureKey "${AWS_SECRET_ACCESS_KEY}" "${dateStamp}" "${region}" "${service}")"
 
 signature="$(sign "${signingKey}" "${stringToSign}")"
+# Hack for debian which appears to add a prefix of '(stdin)= ' to the output
+signature="${signature#(stdin)= }"
 
 # --- TASK 4: add signing information to the request ---
 
