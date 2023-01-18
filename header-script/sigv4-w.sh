@@ -122,17 +122,15 @@ do
   TIME_STAMP="$(date --utc +'%Y%m%dT%H%M%SZ')"
   DATE_STAMP="${TIME_STAMP:0:8}"
 
-  [ -z "$OBJECT_KEY" ] && OBJECT_KEY="2.jpg"
+  # Parameterized functions to calculate the signature
+  thisCanonicalRequest=$(getCanonicalRequest "${inputUri}" "${TIME_STAMP}")
 
-# Parameterized functions to calculate the signature
-thisCanonicalRequest=$(getCanonicalRequest "${inputUri}" "${TIME_STAMP}")
+  thisStringToSign=$(getStringToSign "${thisCanonicalRequest}" "${DATE_STAMP}")
 
-thisStringToSign=$(getStringToSign "${thisCanonicalRequest}" "${DATE_STAMP}")
+  thisSigningKey=$(getSigningKey "${DATE_STAMP}")
 
-thisSigningKey=$(getSigningKey "${DATE_STAMP}")
+  thisSignature=$(getSignature "${thisSigningKey}" "${thisStringToSign}")
 
-thisSignature=$(getSignature "${thisSigningKey}" "${thisStringToSign}")
-
-echo $(getAuthHeader "${thisSignature}")
+  echo $(getAuthHeader "${thisSignature}")
 
 done
