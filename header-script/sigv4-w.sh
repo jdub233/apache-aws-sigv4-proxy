@@ -125,7 +125,7 @@ do
   # Parameterized functions to calculate the signature
   thisCanonicalRequest=$(getCanonicalRequest "${inputUri}" "${TIME_STAMP}")
 
-  thisStringToSign=$(getStringToSign "${thisCanonicalRequest}" "${DATE_STAMP}")
+  thisStringToSign=$(getStringToSign "${thisCanonicalRequest}" "${TIME_STAMP}")
 
   thisSigningKey=$(getSigningKey "${DATE_STAMP}")
 
