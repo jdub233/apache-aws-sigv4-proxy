@@ -64,11 +64,12 @@ hmac_sha256() {
 
 getCanonicalRequest() {
   local httpmethod="GET"
-  local canonicalURI="/${OBJECT_KEY}"
+  local canonicalURI="$1"
+  local thisTimeStamp="$2"
   local canonicalQueryString=""
   local canonicalHeader1="host:$HOST"
   local canonicalHeader2="x-amz-content-sha256:$EMPTY_STRING"
-  local canonicalHeader3="x-amz-date:${TIME_STAMP}"
+  local canonicalHeader3="x-amz-date:${thisTimeStamp}"
   local canonicalHeaders="${canonicalHeader1}\n${canonicalHeader2}\n${canonicalHeader3}\n"
   if [ -n "$AWS_SESSION_TOKEN" ] ; then
     canonicalHeaders="${canonicalHeaders}x-amz-security-token:$AWS_SESSION_TOKEN\n"
@@ -81,14 +82,17 @@ getStringToSign() {
   sha256() {
     echo -ne "$1" | openssl dgst -sha256 -hex | sed 's/^.* //'
   }
+
+  local canonicalRequest="$1"
+  local thisDateStamp="$2"
   local scope="${DATE_STAMP}/${REGION}/${SERVICE}/${REQUEST_TYPE}"
-  local canonicalRequest="$(getCanonicalRequest)"
   local canonicalRequestHash="$(sha256 "$canonicalRequest")"
-  printf "${HASH_ALG}\n${TIME_STAMP}\n${scope}\n${canonicalRequestHash}"
+  printf "${HASH_ALG}\n${thisDateStamp}\n${scope}\n${canonicalRequestHash}"
 }
 
 getSigningKey() {
-  local dateKey=$(hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY" $DATE_STAMP)
+  local thisDateStamp=$1
+  local dateKey=$(hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY" "${thisDateStamp}")
   local dateRegionKey=$(hmac_sha256 "hexkey:$dateKey" $REGION)
   local dateRegionServiceKey=$(hmac_sha256 "hexkey:$dateRegionKey" $SERVICE)
   local signingKey=$(hmac_sha256 "hexkey:$dateRegionServiceKey" "aws4_request")
@@ -96,15 +100,18 @@ getSigningKey() {
 }
 
 getSignature() {
-  echo -ne $(hmac_sha256 "hexkey:$(getSigningKey)" "$(getStringToSign)")
+  local thisKey=$1
+  local thisString=$2
+  echo -ne $(hmac_sha256 "hexkey:${thisKey}" "${thisString}")
 }
 
 getAuthHeader() {
+  local sig=$1
   echo -ne \
     "$HASH_ALG \
     Credential=${AWS_ACCESS_KEY_ID}/${DATE_STAMP}/${REGION}/${SERVICE}/${REQUEST_TYPE}, \
     SignedHeaders=$SIGNED_HEADERS, \
-    Signature=$(getSignature)"
+    Signature=${sig}"
 }
 
 setGlobals
@@ -117,13 +124,15 @@ do
 
   [ -z "$OBJECT_KEY" ] && OBJECT_KEY="2.jpg"
 
-#echo "Date: ${TIME_STAMP}"
-#echo "\n"
+# Parameterized functions to calculate the signature
+thisCanonicalRequest=$(getCanonicalRequest "${inputUri}" "${TIME_STAMP}")
 
-  echo ${inputUri}
-  echo ${TIME_STAMP}
-  echo ${DATE_STAMP}
+thisStringToSign=$(getStringToSign "${thisCanonicalRequest}" "${DATE_STAMP}")
 
-#echo $(getAuthHeader)
+thisSigningKey=$(getSigningKey "${DATE_STAMP}")
+
+thisSignature=$(getSignature "${thisSigningKey}" "${thisStringToSign}")
+
+echo $(getAuthHeader "${thisSignature}")
 
 done
