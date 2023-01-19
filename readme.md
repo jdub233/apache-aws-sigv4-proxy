@@ -6,7 +6,7 @@ The signing is done by a bash script that is referenced as an [Apache RewriteMap
 request URI, and returns a signed authorization header for that URI.  It uses a bash `while` loop
 to run forever, listening for input from Apache (as specified in the RewriteMap configuration).
 
-It is based on the concept of an [AWS sigv4 signing proxy](https://github.com/awslabs/aws-sigv4-proxy) by [awslabs](https://github.com/awslabs), but implemented as in Apache instead of a Go container.
+It is based on the concept of an [AWS sigv4 signing proxy](https://github.com/awslabs/aws-sigv4-proxy) by [awslabs](https://github.com/awslabs), but implemented with Apache instead of a Go container.
 
 ## Running the container
 
