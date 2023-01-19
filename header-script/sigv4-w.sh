@@ -1,32 +1,18 @@
 #!/bin/bash
 
-# This script creates a signed AWS API s3 getObject request.
+# This script creates a signed authorization header for an S3 REST API getObject request.
+# It is designed to be used by Apache's RewriteMap feature, which can start an external program
+# and comminicate with it via stdin and stdout. The script listens for Apache to pass it the
+# request URI, and returns a signed authorization header for that URI.  It uses a bash 'while' loop
+# to run forever, listening for input from Apache (as specified in the RewriteMap configuration).
+
 # Related AWS documentation:
 #   - https://docs.aws.amazon.com/general/latest/gr/create-signed-request.html#create-canonical-request
 #   - https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
 #   - https://czak.pl/2015/09/15/s3-rest-api-with-curl.html
 
-# EXAMPLES:
-
-  # ----------------------------------------------------------------
-  #    Get creds from profile and pass an explicit timestamp
-  # ----------------------------------------------------------------
-  # sh signer.sh \
-  #   profile=infnprd \
-  #   task=curl \
-  #   object_key=2.jpg \
-  #   time_stamp=$(date --utc +'%Y%m%dT%H%M000000Z')
-  # 
-  # ----------------------------------------------------------------
-  #    Export the credentials and invoke default of current timestamp
-  # ----------------------------------------------------------------
-  # set -a
-  # aws_access_key_id=[id]
-  # aws_secret_access_key=[key]
-  # aws_session_token=[token]
-  # sh signer.sh \
-  #   task=curl \
-  #   object_key=2.jpg
+# Related Apache documentation:
+#   - https://httpd.apache.org/docs/2.4/rewrite/rewritemap.html#prg
 
 # These are just example values, not real credentials. These should be set in the environment.
 AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
