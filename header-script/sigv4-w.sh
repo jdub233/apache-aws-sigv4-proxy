@@ -20,14 +20,16 @@ AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_SECURITY_TOKEN="AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5TthT+FvwqnKwRcOIfrRh3c/LTo6UDdyJwOOvEVPvLXCrrrUtdnniCEXAMPLE/IvU1dYUg2RVAJBanLiHb4IgRmpRV3zrkuWJOgQs8IZZaIv2BXIa2R4OlgkBN9bkUDNCJiBeb/AXlzBBko7b15fjrBs2+cTQtpZ3CYWFXG8C5zqx37wnOE49mRl/+OtkIKGO7fAE"
 OBJECT_LAMBDA_HOST="example.s3-object-lambda.us-east-1.amazonaws.com"
 
+# This line just renames a thing for convenience.
 AWS_SESSION_TOKEN="${AWS_SECURITY_TOKEN}"
 
+# Validates that the required environment variables are set.
 [[ -n "${AWS_ACCESS_KEY_ID}" ]]     || { echo "AWS_ACCESS_KEY_ID required" >&2; exit 1; }
 [[ -n "${AWS_SECRET_ACCESS_KEY}" ]] || { echo "AWS_SECRET_ACCESS_KEY required" >&2; exit 1; }
 [[ -n "${AWS_SECURITY_TOKEN}" ]]    || { echo "AWS_SECURITY_TOKEN required" >&2; exit 1; }
 [[ -n "${OBJECT_LAMBDA_HOST}" ]]    || { echo "OBJECT_LAMBDA_HOST required" >&2; exit 1; }
 
-
+# Function definitions
 setGlobals() {  
   SERVICE="s3-object-lambda"
   HASH_ALG='AWS4-HMAC-SHA256'
@@ -97,11 +99,14 @@ getAuthHeader() {
     Signature=${sig}"
 }
 
+# When started, setup the static variables
 setGlobals
 
+# This is the main loop.  It reads the URI from stdin and outputs the corresponding signed auth header to stdout.
 while read inputUri
 do
 
+  # Calculate the date and time stamps
   TIME_STAMP="$(date --utc +'%Y%m%dT%H%M%SZ')"
   DATE_STAMP="${TIME_STAMP:0:8}"
 
