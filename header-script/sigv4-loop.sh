@@ -1,114 +1,124 @@
 #!/bin/bash
 
+# This script creates a signed authorization header for an S3 REST API getObject request.
+# It is designed to be used by Apache's RewriteMap feature, which can start an external program
+# and comminicate with it via stdin and stdout. The script listens for Apache to pass it the
+# request URI, and returns a signed authorization header for that URI.  It uses a bash 'while' loop
+# to run forever, listening for input from Apache (as specified in the RewriteMap configuration).
+
+# Related AWS documentation:
+#   - https://docs.aws.amazon.com/general/latest/gr/create-signed-request.html#create-canonical-request
+#   - https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
+#   - https://czak.pl/2015/09/15/s3-rest-api-with-curl.html
+
+# Related Apache documentation:
+#   - https://httpd.apache.org/docs/2.4/rewrite/rewritemap.html#prg
+
 # These are just example values, not real credentials. These should be set in the environment.
 AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
 AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_SECURITY_TOKEN="AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5TthT+FvwqnKwRcOIfrRh3c/LTo6UDdyJwOOvEVPvLXCrrrUtdnniCEXAMPLE/IvU1dYUg2RVAJBanLiHb4IgRmpRV3zrkuWJOgQs8IZZaIv2BXIa2R4OlgkBN9bkUDNCJiBeb/AXlzBBko7b15fjrBs2+cTQtpZ3CYWFXG8C5zqx37wnOE49mRl/+OtkIKGO7fAE"
 OBJECT_LAMBDA_HOST="example.s3-object-lambda.us-east-1.amazonaws.com"
 
-# Source: https://docs.aws.amazon.com/general/latest/gr/sigv4-signed-request-examples.html
+# This line just renames a thing for convenience.
+AWS_SESSION_TOKEN="${AWS_SECURITY_TOKEN}"
 
+# Validates that the required environment variables are set.
 [[ -n "${AWS_ACCESS_KEY_ID}" ]]     || { echo "AWS_ACCESS_KEY_ID required" >&2; exit 1; }
 [[ -n "${AWS_SECRET_ACCESS_KEY}" ]] || { echo "AWS_SECRET_ACCESS_KEY required" >&2; exit 1; }
 [[ -n "${AWS_SECURITY_TOKEN}" ]]    || { echo "AWS_SECURITY_TOKEN required" >&2; exit 1; }
 [[ -n "${OBJECT_LAMBDA_HOST}" ]]    || { echo "OBJECT_LAMBDA_HOST required" >&2; exit 1; }
 
-
-readonly method="GET"
-readonly service="s3-object-lambda"
-readonly host="${OBJECT_LAMBDA_HOST}"
-readonly region="us-east-1"
-readonly emptyContentSha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" # This is the SHA256 of an empty string.
-
-function sha256 {
-    echo -ne "$1" | openssl dgst -sha256 -hex
+# Function definitions
+setGlobals() {  
+  SERVICE="s3-object-lambda"
+  HASH_ALG='AWS4-HMAC-SHA256'
+  REQUEST_TYPE='aws4_request'
+  SIGNED_HEADERS="host;x-amz-content-sha256;x-amz-date"
+  EMPTY_STRING="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  [ -n "$AWS_SESSION_TOKEN" ] && SIGNED_HEADERS="$SIGNED_HEADERS;x-amz-security-token"
+  [ -z "$REGION" ] && REGION="us-east-1"
+  [ -z "$HOST" ] && HOST=${OBJECT_LAMBDA_HOST}
 }
 
-function hex {
-    echo -ne "$1" | hexdump | sed -e 's/^[0-9a-f]*//' -e 's/ //g' | tr -d '\n'
+hmac_sha256() {
+  key="$1"
+  data="$2"
+  echo -ne "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key" | sed 's/^.* //' | tr -d '\n'
 }
 
-function sign {
-    local hexKey="$1"
-    local msg="$2"
-
-    # Hack for debian which appears to add a prefix of '(stdin)= ' to the output.
-    # This just removes that prefix.
-    hexKey="${hexKey#(stdin)= }"
-
-    echo -ne "${msg}" | openssl dgst -sha256 -mac hmac -macopt "hexkey:${hexKey}"
+getCanonicalRequest() {
+  local httpmethod="GET"
+  local canonicalURI="$1"
+  local thisTimeStamp="$2"
+  local canonicalQueryString=""
+  local canonicalHeader1="host:$HOST"
+  local canonicalHeader2="x-amz-content-sha256:$EMPTY_STRING"
+  local canonicalHeader3="x-amz-date:${thisTimeStamp}"
+  local canonicalHeaders="${canonicalHeader1}\n${canonicalHeader2}\n${canonicalHeader3}\n"
+  if [ -n "$AWS_SESSION_TOKEN" ] ; then
+    canonicalHeaders="${canonicalHeaders}x-amz-security-token:$AWS_SESSION_TOKEN\n"
+  fi
+  local hashedPayload=$EMPTY_STRING
+  printf "${httpmethod}\n${canonicalURI}\n${canonicalQueryString}\n${canonicalHeaders}\n${SIGNED_HEADERS}\n${hashedPayload}"
 }
 
-function getSignatureKey {
-    local key="$1"
-    local dateStamp1="$2"
-    local regionName="$3"
-    local serviceName="$4"
-    local kDate kRegion kService kSigning
+getStringToSign() {
+  sha256() {
+    echo -ne "$1" | openssl dgst -sha256 -hex | sed 's/^.* //'
+  }
 
-    kDate="$(sign "$(hex "AWS4${key}")" "${dateStamp1}")"
-    kRegion="$(sign "${kDate}" "${regionName}")"
-    kService="$(sign "${kRegion}" "${serviceName}")"
-    kSigning="$(sign "${kService}" "aws4_request")"
-
-    # Hack for debian which appears to add a prefix of '(stdin)= ' to the output
-    kSigning="${kSigning#(stdin)= }"
-
-    echo -ne "${kSigning}"
+  local canonicalRequest="$1"
+  local thisDateStamp="$2"
+  local scope="${DATE_STAMP}/${REGION}/${SERVICE}/${REQUEST_TYPE}"
+  local canonicalRequestHash="$(sha256 "$canonicalRequest")"
+  printf "${HASH_ALG}\n${thisDateStamp}\n${scope}\n${canonicalRequestHash}"
 }
 
-# After declaring the functions and the static values, we can start the read loop
-# Apache will pass the Request-URI to stdin of the script, and it will respond with the corresponding authorization header
+getSigningKey() {
+  local thisDateStamp=$1
+  local dateKey=$(hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY" "${thisDateStamp}")
+  local dateRegionKey=$(hmac_sha256 "hexkey:$dateKey" $REGION)
+  local dateRegionServiceKey=$(hmac_sha256 "hexkey:$dateRegionKey" $SERVICE)
+  local signingKey=$(hmac_sha256 "hexkey:$dateRegionServiceKey" "aws4_request")
+  printf "$signingKey"
+}
+
+getSignature() {
+  local thisKey=$1
+  local thisString=$2
+  echo -ne $(hmac_sha256 "hexkey:${thisKey}" "${thisString}")
+}
+
+getAuthHeader() {
+  local sig=$1
+  echo -ne \
+    "$HASH_ALG \
+    Credential=${AWS_ACCESS_KEY_ID}/${DATE_STAMP}/${REGION}/${SERVICE}/${REQUEST_TYPE}, \
+    SignedHeaders=$SIGNED_HEADERS, \
+    Signature=${sig}"
+}
+
+# When started, setup the static variables
+setGlobals
+
+# This is the main loop.  It reads the URI from stdin and outputs the corresponding signed auth header to stdout.
 while read inputUri
 do
 
-# --- TASK 1: create canonical request ---
+  # Calculate the date and time stamps
+  TIME_STAMP="$(date --utc +'%Y%m%dT%H%M%SZ')"
+  DATE_STAMP="${TIME_STAMP:0:8}"
 
-amazonDate="$(date -u +'%Y%m%dT%H%M%SZ')" # This has to match the x-amz-date header that apache generates
-dateStamp="$(date -u +'%Y%m%d')"
+  # Parameterized functions to calculate the signature
+  thisCanonicalRequest=$(getCanonicalRequest "${inputUri}" "${TIME_STAMP}")
 
-canonicalUri=${inputUri}
-canonicalQueryString=""
-canonicalHeaders="host:${host}\nx-amz-content-sha256:${emptyContentSha256}\nx-amz-date:${amazonDate}\nx-amz-security-token:${AWS_SECURITY_TOKEN}\n" # \n Last newline is needed???
-signedHeaders="host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
-payloadHash=${emptyContentSha256}
+  thisStringToSign=$(getStringToSign "${thisCanonicalRequest}" "${TIME_STAMP}")
 
-canonicalRequest="${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}"
+  thisSigningKey=$(getSigningKey "${DATE_STAMP}")
 
-# --- TASK 2: create the string to sign ---
+  thisSignature=$(getSignature "${thisSigningKey}" "${thisStringToSign}")
 
-algorithm="AWS4-HMAC-SHA256"
-credentialScope="${dateStamp}/${region}/${service}/aws4_request"
-
-hashedCanonicalRequest="$(sha256 "${canonicalRequest}")"
-# Hack for debian which appears to add a prefix of '(stdin)= ' to the output
-hashedCanonicalRequest="${hashedCanonicalRequest#(stdin)= }"
-
-stringToSign="${algorithm}\n${amazonDate}\n${credentialScope}\n${hashedCanonicalRequest}"
-
-# --- TASK 3: calculate the signature ---
-
-signingKey="$(getSignatureKey "${AWS_SECRET_ACCESS_KEY}" "${dateStamp}" "${region}" "${service}")"
-
-signature="$(sign "${signingKey}" "${stringToSign}")"
-# Hack for debian which appears to add a prefix of '(stdin)= ' to the output
-signature="${signature#(stdin)= }"
-
-# --- TASK 4: add signing information to the request ---
-
-authorizationHeader="${algorithm} Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature#(stdin)= }"
-
-# --- SEND REQUEST ---
-
-echo $authorizationHeader
+  echo $(getAuthHeader "${thisSignature}")
 
 done
-
-#curl --fail --silent \
-#    "${endpoint}" \
-#    --data "${requestParameters}" \
-#    --header "Accept-Encoding: identity" \
-#    --header "Content-Type: ${contentType}" \
-#    --header "X-Amz-Date: ${amazonDate}" \
-#    --header "X-Amz-Target: ${amazonTarget}" \
-#    --header "Authorization: ${authorizationHeader}"
