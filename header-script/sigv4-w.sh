@@ -43,8 +43,6 @@ AWS_SESSION_TOKEN="${AWS_SECURITY_TOKEN}"
 
 
 setGlobals() {  
-  #[ -z "$TIME_STAMP" ] && TIME_STAMP="$(date --utc +'%Y%m%dT%H%M%SZ')"
-  #DATE_STAMP="${TIME_STAMP:0:8}"
   SERVICE="s3-object-lambda"
   HASH_ALG='AWS4-HMAC-SHA256'
   REQUEST_TYPE='aws4_request'
@@ -53,7 +51,6 @@ setGlobals() {
   [ -n "$AWS_SESSION_TOKEN" ] && SIGNED_HEADERS="$SIGNED_HEADERS;x-amz-security-token"
   [ -z "$REGION" ] && REGION="us-east-1"
   [ -z "$HOST" ] && HOST=${OBJECT_LAMBDA_HOST}
-  [ -z "$OBJECT_KEY" ] && OBJECT_KEY="2.jpg"
 }
 
 hmac_sha256() {
