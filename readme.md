@@ -28,6 +28,19 @@ This will build and run in a single command:
 docker build  -t apache-prg . && docker run -it -p 80:80 apache-prg
 ```
 
+## Provision credentials and endpoint through environment variables
+
+The container can be run with environment variables to provision the AWS credentials and the S3 endpoint.  This feature is not yet complete, but here is an example of how it will work:
+
+```bash
+docker run -it -p 80:80 \
+    -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
+    -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+    -e AWS_SECURITY_TOKEN=examplereallylongsecuritytoken \
+    -e OBJECT_LAMBDA_HOST=example.s3-object-lambda.us-east-1.amazonaws.com \
+    apache-prg
+```
+
 ## References
 
 https://serverfault.com/questions/592260/add-a-custom-header-to-proxypass-requests
