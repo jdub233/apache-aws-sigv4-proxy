@@ -103,12 +103,14 @@ getAuthHeader() {
 setGlobals
 
 # This is the main loop.  It reads the URI from stdin and outputs the corresponding signed auth header to stdout.
+# The input consists of the timestamp and the request uri delimited by a '&'.  The timestamp comes first because it is a simpler alpha-numeric string.
 while read inputString
 do
 
   # Parse the input string into the timestamp and URI
-  string2=${inputString#*&}
-  string1=${inputString%"&$string2"}
+  string2=${inputString#*&} # the URI
+  string1=${inputString%"&$string2"} # the timestamp
+
   # Calculate the date and time stamps
   TIME_STAMP=${string1}
   DATE_STAMP="${TIME_STAMP:0:8}"
