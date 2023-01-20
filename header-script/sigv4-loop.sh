@@ -103,12 +103,17 @@ getAuthHeader() {
 setGlobals
 
 # This is the main loop.  It reads the URI from stdin and outputs the corresponding signed auth header to stdout.
-while read inputUri
+while read inputString
 do
 
+  # Parse the input string into the timestamp and URI
+  string2=${inputString#*&}
+  string1=${inputString%"&$string2"}
   # Calculate the date and time stamps
-  TIME_STAMP="$(date --utc +'%Y%m%dT%H%M%SZ')"
+  TIME_STAMP=${string1}
   DATE_STAMP="${TIME_STAMP:0:8}"
+
+  inputUri=${string2}
 
   # Parameterized functions to calculate the signature
   thisCanonicalRequest=$(getCanonicalRequest "${inputUri}" "${TIME_STAMP}")
