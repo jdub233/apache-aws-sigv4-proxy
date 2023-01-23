@@ -15,10 +15,10 @@
 #   - https://httpd.apache.org/docs/2.4/rewrite/rewritemap.html#prg
 
 # These are just example values, not real credentials. These should be set in the environment.
-AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
-AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-AWS_SECURITY_TOKEN="AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5TthT+FvwqnKwRcOIfrRh3c/LTo6UDdyJwOOvEVPvLXCrrrUtdnniCEXAMPLE/IvU1dYUg2RVAJBanLiHb4IgRmpRV3zrkuWJOgQs8IZZaIv2BXIa2R4OlgkBN9bkUDNCJiBeb/AXlzBBko7b15fjrBs2+cTQtpZ3CYWFXG8C5zqx37wnOE49mRl/+OtkIKGO7fAE"
-OBJECT_LAMBDA_HOST="example.s3-object-lambda.us-east-1.amazonaws.com"
+#AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
+#AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+#AWS_SECURITY_TOKEN="AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5TthT+FvwqnKwRcOIfrRh3c/LTo6UDdyJwOOvEVPvLXCrrrUtdnniCEXAMPLE/IvU1dYUg2RVAJBanLiHb4IgRmpRV3zrkuWJOgQs8IZZaIv2BXIa2R4OlgkBN9bkUDNCJiBeb/AXlzBBko7b15fjrBs2+cTQtpZ3CYWFXG8C5zqx37wnOE49mRl/+OtkIKGO7fAE"
+#OBJECT_LAMBDA_HOST="example.s3-object-lambda.us-east-1.amazonaws.com"
 
 # This line just renames a thing for convenience.
 AWS_SESSION_TOKEN="${AWS_SECURITY_TOKEN}"
