@@ -30,7 +30,7 @@ docker build  -t apache-prg . && docker run -it -p 80:80 apache-prg
 
 ## Provision credentials and endpoint through environment variables
 
-The container can be run with environment variables to provision the AWS credentials and the S3 endpoint.  This feature is not yet complete, but here is an example of how it will work:
+The container can be run with environment variables to provision the AWS credentials and the S3 endpoint.
 
 ```bash
 docker run -it -p 80:80 \
