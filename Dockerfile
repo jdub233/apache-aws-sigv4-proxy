@@ -27,7 +27,7 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
     a2ensite custom-apache-site && \
     service apache2 restart
 
-# Pull the environment variables from the template into a file for the script to use
+# Pull the environment variables from the template into a file for the signing script to use, and launch apache
 CMD [ "./launch.sh" ]
 
 EXPOSE 80
