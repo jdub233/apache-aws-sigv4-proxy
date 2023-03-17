@@ -16,6 +16,7 @@ COPY ./header-script/sigv4-loop.sh /opt/apache/sigv4-loop.sh
 COPY ./header-script/template.env /opt/apache/template.env
 
 COPY custom-apache-site.conf /etc/apache2/sites-available/custom-apache-site.conf
+COPY ports.conf /etc/apache2/ports.conf
 
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
     a2enmod rewrite && \
@@ -30,4 +31,4 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
 # Pull the environment variables from the template into a file for the signing script to use, and launch apache
 CMD [ "./launch.sh" ]
 
-EXPOSE 80
+EXPOSE 8080
