@@ -28,6 +28,14 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
     a2ensite custom-apache-site && \
     service apache2 restart
 
+RUN rm -rf /run/apache2 && mkdir /run/apache2 && \
+    chmod -R a+rwx /run/apache2 && \
+    chmod -R a+rwx /opt/apache && \
+    chmod -R a+rwx /var/www/html && \
+    chmod -R a+rwx /opt/launch.sh
+
+USER 1001
+
 # Pull the environment variables from the template into a file for the signing script to use, and launch apache
 CMD [ "./launch.sh" ]
 
